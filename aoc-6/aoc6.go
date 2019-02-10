@@ -26,12 +26,13 @@ type Range struct {
 
 // var MIN_X, MAX_X, MIN_Y, MAX_Y int
 var POINT_RANGE Range
+var MAX_DIST_FOR_PROB_2 int
 
-func parseInput(id int, inp string) Coordinate {
+func parseInput(id int, inp string) *Coordinate {
 	splitInput := strings.Split(inp, ", ")
 	x, _ := strconv.Atoi(splitInput[0])
 	y, _ := strconv.Atoi(splitInput[1])
-	return Coordinate{id, x, y}
+	return &Coordinate{id, x, y}
 }
 
 func min(a int, b int) int {
@@ -52,7 +53,7 @@ func abs(a int) int {
 	return a
 }
 
-func getBoundedPoints(coordintates []Coordinate) []Coordinate {
+func getBoundedPoints(coordintates []*Coordinate) []*Coordinate {
 	//get the points that have non-inifinte areas. e.g. they are bounded by some other point above or below
 	var minX, maxX, minY, maxY int
 	for idx, point := range coordintates {
@@ -70,7 +71,7 @@ func getBoundedPoints(coordintates []Coordinate) []Coordinate {
 
 	POINT_RANGE = Range{minX, maxX, minY, maxY}
 
-	boundedPoints := make([]Coordinate, 0)
+	boundedPoints := make([]*Coordinate, 0)
 	for _, point := range coordintates {
 		if point.x > minX && point.x < maxX && point.y > minY && point.y < maxY {
 			boundedPoints = append(boundedPoints, point)
@@ -80,18 +81,18 @@ func getBoundedPoints(coordintates []Coordinate) []Coordinate {
 	return boundedPoints
 }
 
-func getNeighboringPoints(coord Coordinate) []Coordinate {
-	return []Coordinate{
-		Coordinate{-1, coord.x + 1, coord.y},
-		Coordinate{-1, coord.x - 1, coord.y},
-		Coordinate{-1, coord.x, coord.y + 1},
-		Coordinate{-1, coord.x, coord.y - 1},
+func getNeighboringPoints(coord *Coordinate) []*Coordinate {
+	return []*Coordinate{
+		&Coordinate{-1, coord.x + 1, coord.y},
+		&Coordinate{-1, coord.x - 1, coord.y},
+		&Coordinate{-1, coord.x, coord.y + 1},
+		&Coordinate{-1, coord.x, coord.y - 1},
 	}
 }
 
-func getNearestCoords(coord Coordinate, coordinatesArray []Coordinate) []Coordinate {
+func getNearestCoords(coord *Coordinate, coordinatesArray []*Coordinate) []*Coordinate {
 	var minDistance int
-	var distMap = make(map[int][]Coordinate)
+	var distMap = make(map[int][]*Coordinate)
 	for idx, center := range coordinatesArray {
 		dist := abs(center.x-coord.x) + abs(center.y-coord.y)
 		distMap[dist] = append(distMap[dist], center)
@@ -103,24 +104,26 @@ func getNearestCoords(coord Coordinate, coordinatesArray []Coordinate) []Coordin
 	return distMap[minDistance]
 }
 
-func getAreaAroundBoundedPoint(id int, coorindates []Coordinate) int {
+func getAreaAroundBoundedPoint(id int, coorindates []*Coordinate) int {
 
 	queue := list.New()
 	initCoord := coorindates[id]
 	var seenCoordinates = make(map[Coordinate]bool)
 	var inArea = make(map[Coordinate]bool)
-	queue.PushBack(Coordinate{-1, initCoord.x, initCoord.y})
+	queue.PushBack(&Coordinate{-1, initCoord.x, initCoord.y})
 	numberOfPointsChecked := 1
 	for queue.Len() > 0 {
+		// fmt.Println("inArea", inArea)
+		// fmt.Println("seenCoordinates", seenCoordinates)
 		e := queue.Front()
 		queue.Remove(e)
-		coord := e.Value.(Coordinate)
+		coord := e.Value.(*Coordinate)
 		if coord.x < POINT_RANGE.minX || coord.x > POINT_RANGE.maxX || coord.y < POINT_RANGE.minY || coord.y > POINT_RANGE.maxY {
 			return -1
 		}
-		inArea[coord] = true
+		inArea[*coord] = true
 		for _, neighbor := range getNeighboringPoints(coord) {
-			if seenCoordinates[neighbor] {
+			if seenCoordinates[*neighbor] {
 				continue
 			}
 			nearestPoints := getNearestCoords(neighbor, coorindates)
@@ -129,13 +132,13 @@ func getAreaAroundBoundedPoint(id int, coorindates []Coordinate) int {
 			if len(nearestPoints) == 1 && nearestPoints[0].id == id {
 				queue.PushBack(neighbor)
 			}
-			seenCoordinates[neighbor] = true
+			seenCoordinates[*neighbor] = true
 		}
 	}
 	return len(inArea)
 }
 
-func getSumOfDistances(coord Coordinate, coordinatesArray []Coordinate) int {
+func getSumOfDistances(coord *Coordinate, coordinatesArray []*Coordinate) int {
 	totalDistance := 0
 	for _, center := range coordinatesArray {
 		dist := abs(center.x-coord.x) + abs(center.y-coord.y)
@@ -145,8 +148,8 @@ func getSumOfDistances(coord Coordinate, coordinatesArray []Coordinate) int {
 	return totalDistance
 }
 
-func getSizeOfRegion(coords []Coordinate, maxDistance int) int {
-	centerOfPoints := Coordinate{-1, (POINT_RANGE.minX + POINT_RANGE.maxX) / 2, (POINT_RANGE.minY + POINT_RANGE.maxY) / 2}
+func getSizeOfRegion(coords []*Coordinate, maxDistance int) int {
+	centerOfPoints := &Coordinate{-1, (POINT_RANGE.minX + POINT_RANGE.maxX) / 2, (POINT_RANGE.minY + POINT_RANGE.maxY) / 2}
 
 	fmt.Println("Sum of Distances from Center", getSumOfDistances(centerOfPoints, coords))
 
@@ -158,13 +161,13 @@ func getSizeOfRegion(coords []Coordinate, maxDistance int) int {
 	for queue.Len() > 0 {
 		e := queue.Front()
 		queue.Remove(e)
-		coord := e.Value.(Coordinate)
+		coord := e.Value.(*Coordinate)
 		if coord.x < POINT_RANGE.minX || coord.x > POINT_RANGE.maxX || coord.y < POINT_RANGE.minY || coord.y > POINT_RANGE.maxY {
 			return -1
 		}
-		inArea[coord] = true
+		inArea[*coord] = true
 		for _, neighbor := range getNeighboringPoints(coord) {
-			if seenCoordinates[neighbor] {
+			if seenCoordinates[*neighbor] {
 				continue
 			}
 
@@ -172,7 +175,7 @@ func getSizeOfRegion(coords []Coordinate, maxDistance int) int {
 				queue.PushBack(neighbor)
 			}
 
-			seenCoordinates[neighbor] = true
+			seenCoordinates[*neighbor] = true
 		}
 	}
 	return len(inArea)
@@ -180,7 +183,7 @@ func getSizeOfRegion(coords []Coordinate, maxDistance int) int {
 }
 
 func solution(scanner *bufio.Scanner) int {
-	coordinates := make([]Coordinate, 0)
+	coordinates := make([]*Coordinate, 0)
 	i := 0
 	for scanner.Scan() {
 		inp := scanner.Text()
@@ -191,10 +194,12 @@ func solution(scanner *bufio.Scanner) int {
 
 	maxArea := 0
 	for _, pt := range getBoundedPoints(coordinates) {
+		fmt.Println("Point", pt, *pt)
 		maxArea = max(maxArea, getAreaAroundBoundedPoint(pt.id, coordinates))
 	}
+
 	fmt.Println("Solution to Part 1, Maximum Finite Area", maxArea)
-	fmt.Println("Solution to Part 2", getSizeOfRegion(coordinates, 10000))
+	fmt.Println("Solution to Part 2", getSizeOfRegion(coordinates, MAX_DIST_FOR_PROB_2))
 	return -1
 }
 
@@ -218,9 +223,13 @@ func main() {
 
 	flag.Parse()
 
-	var fname = "input.txt"
+	var fname string
 	if *isTest {
 		fname = "test-input.txt"
+		MAX_DIST_FOR_PROB_2 = 32
+	} else {
+		fname = "input.txt"
+		MAX_DIST_FOR_PROB_2 = 10000
 	}
 
 	file, scanner := getScanner(fname)
